@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Quiz and Leaderboard</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#172033;background:#f3f6fc}
+*{box-sizing:border-box}body{margin:0}header{background:#183b79;color:white;padding:24px max(20px,calc((100% - 1100px)/2))}
+header h1{margin:0 0 6px;font-size:clamp(24px,4vw,34px)}header p{margin:0;color:#dbe7ff}
+main{max-width:1100px;margin:24px auto;padding:0 18px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(270px,1fr);gap:20px}
+.card{background:white;border:1px solid #e3e9f4;border-radius:14px;padding:22px;box-shadow:0 5px 18px #20365b0b;margin-bottom:18px}
+h2{font-size:21px;margin:0 0 16px;color:#204783}h3{margin:20px 0 8px}
+label{display:block;margin:8px 0}input[type=text],select{padding:11px;border:1px solid #c8d2e4;border-radius:8px;width:100%;margin:6px 0 14px;background:white}
+button{border:0;border-radius:8px;padding:11px 16px;background:#2455a3;color:white;font-weight:650;cursor:pointer}
+button.secondary{background:#e8effb;color:#204783}button:disabled{opacity:.55;cursor:wait}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.quiz-option{border:1px solid #dbe4f3;border-radius:10px;padding:14px;cursor:pointer}.quiz-option:hover{border-color:#2455a3;background:#f8faff}.quiz-option small{display:block;color:#62718b;margin-top:5px}
+.question{padding:15px 0;border-bottom:1px solid #e8edf5}.question p{font-weight:650;margin:0 0 10px}.question label{font-weight:400}
+.muted{color:#63718a;font-size:14px}.hidden{display:none!important}.pill{display:inline-block;background:#edf3ff;color:#214d91;padding:4px 9px;border-radius:20px;font-size:12px;font-weight:700}
+.notice{padding:12px;background:#eef5ff;border-radius:8px;margin:12px 0}.bad{background:#fff0f0;color:#922}.good{background:#eaf8ef;color:#17663b}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 6px;border-bottom:1px solid #e8edf5}th{color:#63718a}
+.chart-wrap{display:flex;align-items:center;gap:18px}.pie{width:118px;height:118px;border-radius:50%;background:conic-gradient(#21875b 0% 50%,#e36b6b 50% 100%);flex-shrink:0}.legend{font-size:14px;line-height:1.9}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px}
+.review-item{padding:12px;border-radius:8px;margin:10px 0;background:#f7f9fd}.review-item.correct{border-left:4px solid #21875b}.review-item.incorrect{border-left:4px solid #d95757}
+footer{text-align:center;color:#6d7890;font-size:12px;padding:16px}
+@media(max-width:760px){main{grid-template-columns:1fr}.grid{grid-template-columns:1fr}header{padding:20px}}
+</style>
+</head>
+<body>
+<header><h1>Online Quiz &amp; Leaderboard</h1><p>Learn, practise, review, and build your daily streak.</p></header>
+<main>
+<section>
+  <div class="card" id="setupCard">
+    <h2>Start a quiz</h2>
+    <label for="studentName">Student name</label>
+    <input id="studentName" type="text" placeholder="Enter your name" autocomplete="name">
+    <div class="grid">
+      <div><label for="difficulty">Difficulty</label><select id="difficulty"><option value="">All difficulties</option><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+      <div><label for="quizSelect">Quiz</label><select id="quizSelect"><option value="">Loading quizzes...</option></select></div>
+    </div>
+    <button id="startBtn">Start quiz</button>
+    <p class="muted">Choose a topic and difficulty. Each submission is saved as a separate attempt.</p>
+  </div>
+  <div class="card hidden" id="quizCard">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2 id="quizTitle">Quiz</h2><span class="pill" id="quizDifficulty"></span></div>
+    <form id="quizForm"><div id="questions"></div><button id="submitBtn" type="submit">Submit answers</button><button type="button" class="secondary" id="cancelBtn">Cancel</button></form>
+  </div>
+  <div class="card hidden" id="resultCard">
+    <h2>Attempt result</h2><div id="resultSummary" class="notice"></div>
+    <h3>Correctness breakdown</h3>
+    <div class="chart-wrap"><div id="pie" class="pie"></div><div class="legend" id="chartLegend"></div></div>
+    <h3>Review your answers</h3><p class="muted">Reviewing answers does not change your submitted score.</p><div id="review"></div>
+    <button id="newQuizBtn">Take another quiz</button>
+  </div>
+  <div class="card">
+    <h2>My attempt history</h2>
+    <label for="historyName">Student name</label><input id="historyName" type="text" placeholder="Enter the same name">
+    <button class="secondary" id="historyBtn">Load my attempts</button>
+    <div id="history" class="muted" style="margin-top:12px">Enter your name to view recorded attempts.</div>
+  </div>
+</section>
+<aside>
+  <div class="card"><h2>Student leaderboard</h2><p class="muted">Ranked by best score percentage.</p><div id="leaderboard">No attempts yet. Be the first to play!</div></div>
+  <div class="card"><h2>Daily streak</h2><div style="font-size:38px;font-weight:750;color:#204783"><span id="streak">0</span> <span style="font-size:18px">days</span></div><p class="muted">Take a quiz each day to keep your streak. Missing a calendar day resets the current streak.</p></div>
+  <div class="card"><h2>How scoring works</h2><p class="muted">Your submitted attempt score is fixed. You can review the correct answers afterward, and a later quiz creates a new attempt.</p></div>
+</aside>
+</main>
+<footer>Online Quiz and Leaderboard System · Spring Boot · Selenium-ready</footer>
+<script>
+const $ = id => document.getElementById(id);
+let currentQuiz = null;
+let lastAttempt = null;
+
+async function api(url, options={}) {
+  const response = await fetch(url, {headers:{'Content-Type':'application/json'}, ...options});
+  if (!response.ok) {
+    let message = 'Request failed.';
+    try { const body = await response.json(); message = body.message || message; } catch {}
+    throw new Error(message);
+  }
+  return response.json();
+}
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+async function loadQuizzes() {
+  const difficulty = $('difficulty').value;
+  const quizzes = await api('/api/quizzes' + (difficulty ? '?difficulty='+encodeURIComponent(difficulty) : ''));
+  const select = $('quizSelect');
+  select.replaceChildren();
+  if (!quizzes.length) { select.add(new Option('No quizzes available','')); return; }
+  quizzes.forEach(q => select.add(new Option(`${q.title} — ${q.difficulty}`, q.id)));
+}
+async function loadLeaderboard() {
+  const list = await api('/api/leaderboard');
+  if (!list.length) { $('leaderboard').textContent = 'No attempts yet. Be the first to play!'; $('streak').textContent='0'; return; }
+  $('leaderboard').innerHTML = '<table><thead><tr><th>#</th><th>Student</th><th>Best</th><th>Streak</th></tr></thead><tbody>' +
+    list.map(x=>`<tr><td>${x.rank}</td><td>${escapeHtml(x.studentName)}</td><td>${x.bestScore}/${x.totalQuestions}</td><td>${x.streak} 🔥</td></tr>`).join('')+'</tbody></table>';
+  const name = $('studentName').value.trim();
+  const mine = list.find(x=>x.studentName.toLowerCase()===name.toLowerCase());
+  if (mine) $('streak').textContent = mine.streak;
+}
+$('difficulty').addEventListener('change', () => loadQuizzes().catch(showError));
+$('startBtn').addEventListener('click', async () => {
+  try {
+    if (!$('studentName').value.trim()) { showError(new Error('Please enter your name first.')); return; }
+    currentQuiz = await api('/api/quizzes/'+encodeURIComponent($('quizSelect').value));
+    $('quizTitle').textContent = currentQuiz.title;
+    $('quizDifficulty').textContent = currentQuiz.difficulty;
+    $('questions').innerHTML = currentQuiz.questions.map((q,i)=>`<div class="question"><p>${i+1}. ${escapeHtml(q.prompt)}</p>`+
+      q.options.map(opt=>`<label><input type="radio" name="${escapeHtml(q.id)}" value="${escapeHtml(opt)}"> ${escapeHtml(opt)}</label>`).join('')+'</div>').join('');
+    $('setupCard').classList.add('hidden'); $('resultCard').classList.add('hidden'); $('quizCard').classList.remove('hidden');
+  } catch(e) { showError(e); }
+});
+$('cancelBtn').addEventListener('click', () => { $('quizCard').classList.add('hidden'); $('setupCard').classList.remove('hidden'); });
+$('quizForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  try {
+    const answers = currentQuiz.questions.map(q => ({questionId:q.id, answer:document.querySelector(`input[name="${CSS.escape(q.id)}"]:checked`)?.value || ''}));
+    $('submitBtn').disabled = true;
+    const response = await api('/api/attempts',{method:'POST',body:JSON.stringify({
+      studentName:$('studentName').value.trim(), quizId:currentQuiz.id, difficulty:currentQuiz.difficulty, answers
+    })});
+    lastAttempt = response.attempt;
+    showAttempt(lastAttempt);
+    $('streak').textContent=response.currentStreak;
+    $('quizCard').classList.add('hidden'); $('resultCard').classList.remove('hidden'); $('setupCard').classList.remove('hidden');
+    await loadLeaderboard();
+    $('historyName').value=$('studentName').value.trim();
+    await loadHistory();
+  } catch(e) { showError(e); }
+  finally { $('submitBtn').disabled = false; }
+});
+function showAttempt(a) {
+  const correct = a.score, total = a.total, wrong = total-correct, percent = Math.round(a.percentage);
+  $('resultSummary').innerHTML = `<strong>${escapeHtml(a.studentName)}, you scored ${correct} / ${total} (${percent}%).</strong><br>Attempt date: ${escapeHtml(a.date)}. This score is now fixed for this attempt.`;
+  $('pie').style.background = `conic-gradient(#21875b 0% ${percent}%, #e36b6b ${percent}% 100%)`;
+  $('chartLegend').innerHTML = `<div><span class="dot" style="background:#21875b"></span>Correct: ${correct} (${percent}%)</div><div><span class="dot" style="background:#e36b6b"></span>Incorrect: ${wrong} (${100-percent}%)</div>`;
+  $('review').innerHTML = a.review.map((r,i)=>`<div class="review-item ${r.correct?'correct':'incorrect'}"><strong>${i+1}. ${escapeHtml(r.prompt)}</strong><p>Your answer: ${escapeHtml(r.selectedAnswer || 'Not answered')}</p><p>Correct answer: <strong>${escapeHtml(r.correctAnswer)}</strong></p><p class="muted">${escapeHtml(r.explanation)}</p></div>`).join('');
+}
+$('newQuizBtn').addEventListener('click',()=>{$('resultCard').classList.add('hidden');$('setupCard').classList.remove('hidden');});
+$('historyBtn').addEventListener('click',loadHistory);
+async function loadHistory() {
+  const name = $('historyName').value.trim();
+  if (!name) { $('history').textContent='Enter your name first.'; return; }
+  try {
+    const list = await api('/api/attempts?student='+encodeURIComponent(name));
+    if (!list.length) { $('history').textContent='No attempts found for this name.'; return; }
+    $('history').innerHTML='<table><thead><tr><th>Quiz</th><th>Score</th><th>Date</th></tr></thead><tbody>'+
+      list.map(a=>`<tr><td>${escapeHtml(a.quizTitle)}</td><td>${a.score}/${a.total}</td><td>${escapeHtml(a.date)}</td></tr>`).join('')+'</tbody></table>';
+  } catch(e) { showError(e); }
+}
+function showError(e) { alert(e.message || 'Something went wrong.'); }
+Promise.all([loadQuizzes(),loadLeaderboard()]).catch(showError);
+</script>
+</body>
+</html>
